@@ -29,7 +29,7 @@ from pynipap import Prefix, VRF
 
 
 class Main(object):
-    VERSION = '1.0.0'
+    VERSION = '1.0.1'
 
     def __init__(self):
         self._args = self._parse_args()
@@ -87,7 +87,6 @@ class Main(object):
             query = self._args.query
         search_result = Prefix.smart_search(query)
         prefix_objects = search_result['result']
-        print('%-20s%-20s%-6s%-30s\n%s' % ('Prefix', 'Node', 'Type', 'Description', '-'*80))
 
         type_map = {
             'reservation': 'R',
@@ -95,8 +94,15 @@ class Main(object):
             'host': 'H'
         }
 
+        print('%-5s%-20s%-20s%-6s%-30s\n%s' % ('VRF', 'Prefix', 'Node', 'Type', 'Description', '-'*80))
         for po in prefix_objects:
-            print('%-20s%-20s%-6s%-30s' % (po.prefix or '', po.node or '', type_map[po.type], po.description or ''))
+            print('%-5s%-20s%-20s%-6s%-30s' % (
+                po.vrf.rt or '',
+                po.display_prefix or '',
+                po.node or '',
+                type_map[po.type],
+                po.description or ''
+            ))
 
 
 if __name__ == '__main__':
