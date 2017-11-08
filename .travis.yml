@@ -9,7 +9,6 @@ before_script:
     - mv CONFIG_SAMPLE.py CONFIG.py
 script:
   - pep8 --max-line-length=120 ipam *.py
-  - pylint ipam *.py
   - ./ipam --help
 notifications:
   email:
