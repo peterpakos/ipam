@@ -1,0 +1,19 @@
+language: python
+python:
+  - "2.7"
+  - "3.3"
+  - "3.4"
+  - "3.5"
+  - "3.6"
+before_script:
+    - mv CONFIG_SAMPLE.py CONFIG.py
+script:
+  - pep8 --max-line-length=120 ipam *.py
+  - pylint ipam *.py
+  - ./ipam --help
+notifications:
+  email:
+    on_success: change
+    on_failure: always
+    recipients:
+    - peter@pakos.uk
