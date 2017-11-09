@@ -29,7 +29,7 @@ from pynipap import Prefix, VRF
 
 
 class Main(object):
-    VERSION = '1.0.1'
+    VERSION = '1.1.0'
 
     def __init__(self):
         self._args = self._parse_args()
@@ -54,13 +54,15 @@ class Main(object):
         parser_vrf_subparser = parser_vrf.add_subparsers(title='vrf commands', dest='subcommand')
         parser_vrf_subparser.add_parser('list', help='display list of VRFs')
 
-        parser_address = command.add_parser('address', help='manage addresses')
-        parser_address_subparser = parser_address.add_subparsers(title='address commands', dest='subcommand')
-        parser_address_subparser.add_parser('list', help='display list of addresses')
+        parser_prefix = command.add_parser('prefix', help='manage prefixes')
+        parser_prefix_subparser = parser_prefix.add_subparsers(title='prefix commands', dest='subcommand')
+        parser_prefix_subparser.add_parser('list', help='display list of prefixes')
+        parser_prefix_search = parser_prefix_subparser.add_parser('search', help='search prefixes')
+        parser_prefix_search.add_argument('query', help='search query')
 
-        parser_search = command.add_parser('search', help='search prefixes')
+        parser_search = command.add_parser('search', help='search prefixes (shortcut for "prefix search")')
         parser_search.add_argument('query', help='search query')
-        parser_search.set_defaults(subcommand='prefix')
+        parser_search.set_defaults(command='prefix', subcommand='search')
 
         return parser.parse_args()
 
@@ -79,21 +81,24 @@ class Main(object):
         for vrf in VRF.list():
             print('%-20s%-20s%-20s' % (vrf.rt or '', vrf.name or '', vrf.description or ''))
 
-    def _address_list(self):
-        self._search_prefix()
+    def _prefix_list(self):
+        self._display_prefix_list(Prefix.list())
 
-    def _search_prefix(self, query=''):
+    def _prefix_search(self, query=''):
         if hasattr(self._args, 'query'):
             query = self._args.query
         search_result = Prefix.smart_search(query)
         prefix_objects = search_result['result']
 
+        self._display_prefix_list(prefix_objects)
+
+    @staticmethod
+    def _display_prefix_list(prefix_objects):
         type_map = {
             'reservation': 'R',
             'assignment': 'A',
             'host': 'H'
         }
-
         print('%-5s%-20s%-20s%-6s%-30s\n%s' % ('VRF', 'Prefix', 'Node', 'Type', 'Description', '-'*80))
         for po in prefix_objects:
             print('%-5s%-20s%-20s%-6s%-30s' % (
