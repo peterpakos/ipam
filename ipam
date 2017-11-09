@@ -25,11 +25,12 @@ import sys
 import argparse
 from CONFIG import CONFIG
 import pynipap
-from pynipap import Prefix, VRF
+from pynipap import Prefix, VRF, NipapError
+import socket
 
 
 class Main(object):
-    VERSION = '1.1.0'
+    VERSION = '1.2.0'
 
     def __init__(self):
         self._args = self._parse_args()
@@ -54,15 +55,15 @@ class Main(object):
         parser_vrf_subparser = parser_vrf.add_subparsers(title='vrf commands', dest='subcommand')
         parser_vrf_subparser.add_parser('list', help='display list of VRFs')
 
-        parser_prefix = command.add_parser('prefix', help='manage prefixes')
-        parser_prefix_subparser = parser_prefix.add_subparsers(title='prefix commands', dest='subcommand')
-        parser_prefix_subparser.add_parser('list', help='display list of prefixes')
-        parser_prefix_search = parser_prefix_subparser.add_parser('search', help='search prefixes')
-        parser_prefix_search.add_argument('query', help='search query')
+        parser_address = command.add_parser('address', help='manage addresses')
+        parser_address_subparser = parser_address.add_subparsers(title='address commands', dest='subcommand')
+        parser_address_subparser.add_parser('list', help='display list of addresses')
+        parser_address_search = parser_address_subparser.add_parser('search', help='search addresses')
+        parser_address_search.add_argument('query', help='search query')
 
-        parser_search = command.add_parser('search', help='search prefixes (shortcut for "prefix search")')
+        parser_search = command.add_parser('search', help='search address (shortcut for "address search")')
         parser_search.add_argument('query', help='search query')
-        parser_search.set_defaults(command='prefix', subcommand='search')
+        parser_search.set_defaults(command='address', subcommand='search')
 
         return parser.parse_args()
 
@@ -75,20 +76,44 @@ class Main(object):
     def run(self):
         getattr(self, '_%s_%s' % (self._args.command, self._args.subcommand))()
 
-    @staticmethod
-    def _vrf_list():
-        print('%-20s%-20s%-30s\n%s' % ('RT', 'Name', 'Description', '-'*80))
-        for vrf in VRF.list():
-            print('%-20s%-20s%-20s' % (vrf.rt or '', vrf.name or '', vrf.description or ''))
+    def _vrf_list(self):
+        vrf_list = None
+        try:
+            vrf_list = VRF.list()
+        except (socket.error, NipapError) as e:
+            self.die(e)
 
-    def _prefix_list(self):
-        self._display_prefix_list(Prefix.list())
+        if not vrf_list:
+            exit()
 
-    def _prefix_search(self, query=''):
+        print('%-10s%-30s%-40s\n%s' % ('VRF RT', 'Name', 'Description', '-'*80))
+        for vrf in vrf_list:
+            print('%-10s%-30s%-40s' % (vrf.rt or '', vrf.name or '', vrf.description or ''))
+
+    def _address_list(self):
+        prefix_list = None
+        try:
+            prefix_list = Prefix.list()
+        except (socket.error, NipapError) as e:
+            self.die(e)
+
+        if not prefix_list:
+            exit()
+
+        self._display_prefix_list(prefix_list)
+
+    def _address_search(self, query=''):
         if hasattr(self._args, 'query'):
             query = self._args.query
-        search_result = Prefix.smart_search(query)
+        search_result = None
+        try:
+            search_result = Prefix.smart_search(query)
+        except (socket.error, NipapError) as e:
+            self.die(e)
         prefix_objects = search_result['result']
+
+        if not prefix_objects:
+            exit()
 
         self._display_prefix_list(prefix_objects)
 
@@ -99,13 +124,13 @@ class Main(object):
             'assignment': 'A',
             'host': 'H'
         }
-        print('%-5s%-20s%-20s%-6s%-30s\n%s' % ('VRF', 'Prefix', 'Node', 'Type', 'Description', '-'*80))
+        print('%-10s%-20s%-5s%-20s%-30s\n%s' % ('VRF RT', 'Prefix', 'Type', 'Node', 'Description', '-'*80))
         for po in prefix_objects:
-            print('%-5s%-20s%-20s%-6s%-30s' % (
+            print('%-10s%-20s%-5s%-20s%-30s' % (
                 po.vrf.rt or '',
                 po.display_prefix or '',
-                po.node or '',
                 type_map[po.type],
+                po.node or '',
                 po.description or ''
             ))
 
